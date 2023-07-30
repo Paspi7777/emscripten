@@ -32,7 +32,7 @@ from .shared import asmjs_mangle, DEBUG
 from .shared import LLVM_DWARFDUMP, demangle_c_symbol_name
 from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
 from .utils import WINDOWS
-from .settings import settings
+from .settings import settings, default_setting
 
 logger = logging.getLogger('building')
 
@@ -1115,11 +1115,20 @@ def map_to_js_libs(library_name, emit_tsd):
     'embind': 'libembind',
     'GL': 'libGL',
   }
+  settings_map = {
+    'glfw': {'USE_GLFW': 2},
+    'glfw3': {'USE_GLFW': 3},
+    'SDL': {'USE_SDL': 2},
+  }
 
   if library_name in library_map:
     libs = library_map[library_name]
     logger.debug('Mapping library `%s` to JS libraries: %s' % (library_name, libs))
     return (libs, native_library_map.get(library_name))
+
+  if library_name in settings_map:
+    for key, value in settings_map[library_name].items():
+      default_setting(key, value)
 
   if library_name.endswith('.js') and os.path.isfile(path_from_root('src', f'library_{library_name}')):
     return ([f'library_{library_name}'], None)

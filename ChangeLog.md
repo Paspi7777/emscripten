@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 3.1.45 (in development)
 -----------------------
+- The `USE_GLFW` settings now defaults to 0 rather than 2.  This matchs other
+  other settings such as `USE_SDL` that default to 0 these days and also is
+  inline the the behaviour under `MINIMAL_RUNTIME`.  If you use glfw you now
+  need to explictly opt into it using `-sUSE_GLFW`.
 
 3.1.44 - 07/25/23
 -----------------
