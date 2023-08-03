@@ -6,6 +6,8 @@
 // old JS version. Current Status: Work in Progress. See
 // https://github.com/emscripten-core/emscripten/issues/15041.
 
+#define _LARGEFILE64_SOURCE // For F_GETLK64 etc
+
 #include <dirent.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
@@ -857,6 +859,39 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
 
 int __syscall_rmdir(intptr_t path) {
   return __syscall_unlinkat(AT_FDCWD, path, AT_REMOVEDIR);
+}
+
+// wasmfs_unmount is similar to __syscall_unlinkat, but assumes AT_REMOVEDIR is true
+// and will only unlink mountpoints (Empty and nonempty).
+int wasmfs_unmount(intptr_t path) {
+  auto parsed = path::parseParent((char*)path, AT_FDCWD);
+  if (auto err = parsed.getError()) {
+    return err;
+  }
+  auto& [parent, childNameView] = parsed.getParentChild();
+  std::string childName(childNameView);
+  auto lockedParent = parent->locked();
+  auto file = lockedParent.getChild(childName);
+  if (!file) {
+    return -ENOENT;
+  }
+  // Disallow removing the root directory, even if it is empty.
+  if (file == wasmFS.getRootDirectory()) {
+    return -EBUSY;
+  }
+
+  if (auto dir = file->dynCast<Directory>()) {
+    if (parent->getBackend() == dir->getBackend()) {
+      // The child is not a valid mountpoint.
+      return -EINVAL;
+    }
+  } else {
+    // A normal file or symlink.
+    return -ENOTDIR;
+  }
+
+  // Input is valid, perform the unlink.
+  return lockedParent.removeChild(childName);
 }
 
 int __syscall_getdents64(int fd, intptr_t dirp, size_t count) {

@@ -1,6 +1,9 @@
 __errno_location
 __indirect_function_table
 __wasm_call_ctors
+dynCall_iiiij
+dynCall_iij
+dynCall_ji
 dynCall_jiji
 emscripten_stack_get_base
 emscripten_stack_get_current
@@ -8,8 +11,11 @@ emscripten_stack_get_end
 emscripten_stack_get_free
 emscripten_stack_init
 fflush
+free
 main
+malloc
 memory
 stackAlloc
 stackRestore
 stackSave
+wasmfs_flush

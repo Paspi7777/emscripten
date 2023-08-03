@@ -10,11 +10,15 @@ __wasm_call_ctors
 dynCall_iiiiiijj
 dynCall_iiiiij
 dynCall_iiiiijj
+dynCall_iiiij
+dynCall_iij
+dynCall_ji
 dynCall_jiiii
 dynCall_jiji
 dynCall_viijii
 free
 main
+malloc
 memory
 setTempRet0
 setThrew

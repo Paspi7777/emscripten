@@ -1,6 +1,9 @@
 $__errno_location
 $__wasm_call_ctors
 $add
+$dlfree
+$dlmalloc
+$sbrk
 $stackAlloc
 $stackRestore
 $stackSave

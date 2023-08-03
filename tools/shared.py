@@ -55,7 +55,7 @@ PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 # exact requirement, but is the oldest version of node that we do any testing with.
 # This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 MINIMUM_NODE_VERSION = (10, 19, 0)
-EXPECTED_LLVM_VERSION = 17
+EXPECTED_LLVM_VERSION = 18
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -130,16 +130,6 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
 def get_num_cores():
   return int(os.environ.get('EMCC_CORES', os.cpu_count()))
-
-
-def mp_run_process(command_tuple):
-  cmd, env, route_stdout_to_temp_files_suffix = command_tuple
-  stdout = None
-  if route_stdout_to_temp_files_suffix:
-    stdout = get_temp_files().get(route_stdout_to_temp_files_suffix)
-  subprocess.run(cmd, stdout=stdout, stderr=None, env=env, check=True)
-  if route_stdout_to_temp_files_suffix:
-    return stdout.name
 
 
 def returncode_to_str(code):
@@ -638,7 +628,7 @@ def is_c_symbol(name):
   return name.startswith('_') or name in settings.WASM_SYSTEM_EXPORTS
 
 
-def treat_as_user_function(name):
+def treat_as_user_export(name):
   if name.startswith('dynCall_'):
     return False
   if name in settings.WASM_SYSTEM_EXPORTS:
@@ -656,7 +646,7 @@ def asmjs_mangle(name):
   # to simply `main` which is expected by the emscripten JS glue code.
   if name == '__main_argc_argv':
     name = 'main'
-  if treat_as_user_function(name):
+  if treat_as_user_export(name):
     return '_' + name
   return name
 
@@ -676,11 +666,6 @@ def unsuffixed(name):
 
 def unsuffixed_basename(name):
   return os.path.basename(unsuffixed(name))
-
-
-def strip_prefix(string, prefix):
-  assert string.startswith(prefix)
-  return string[len(prefix):]
 
 
 def make_writable(filename):

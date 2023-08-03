@@ -641,11 +641,12 @@ var ENVIRONMENT = 'web,webview,worker,node';
 // [link]
 var LZ4 = false;
 
-// Emscripten exception handling options.
+// Emscripten (JavaScript-based) exception handling options.
 // The three options below (DISABLE_EXCEPTION_CATCHING,
 // EXCEPTION_CATCHING_ALLOWED, and DISABLE_EXCEPTION_THROWING) only pertain to
-// Emscripten exception handling and do not control the native wasm exception
-// handling option (-fwasm-exceptions, internal setting: WASM_EXCEPTIONS).
+// JavaScript-based exception handling and do not control the native Wasm
+// exception handling option (-fwasm-exceptions, internal setting:
+// WASM_EXCEPTIONS).
 
 // Disables generating code to actually catch exceptions. This disabling is on
 // by default as the overhead of exceptions is quite high in size and speed
@@ -661,6 +662,9 @@ var LZ4 = false;
 //
 // This option is mutually exclusive with EXCEPTION_CATCHING_ALLOWED.
 //
+// This option only applies to Emscripten (JavaScript-based) exception handling
+// and does not control the native Wasm exception handling.
+//
 // [compile+link] - affects user code at compile and system libraries at link
 var DISABLE_EXCEPTION_CATCHING = 1;
 
@@ -669,8 +673,30 @@ var DISABLE_EXCEPTION_CATCHING = 1;
 //
 // This option is mutually exclusive with DISABLE_EXCEPTION_CATCHING.
 //
+// This option only applies to Emscripten (JavaScript-based) exception handling
+// and does not control the native Wasm exception handling.
+//
 // [compile+link] - affects user code at compile and system libraries at link
 var EXCEPTION_CATCHING_ALLOWED = [];
+
+// Internal: Tracks whether Emscripten should link in exception throwing (C++
+// 'throw') support library. This does not need to be set directly, but pass
+// -fno-exceptions to the build disable exceptions support. (This is basically
+// -fno-exceptions, but checked at final link time instead of individual .cpp
+// file compile time) If the program *does* contain throwing code (some source
+// files were not compiled with `-fno-exceptions`), and this flag is set at link
+// time, then you will get errors on undefined symbols, as the exception
+// throwing code is not linked in. If so you should either unset the option (if
+// you do want exceptions) or fix the compilation of the source files so that
+// indeed no exceptions are used).
+// TODO(sbc): Move to settings_internal (current blocked due to use in test
+// code).
+//
+// This option only applies to Emscripten (JavaScript-based) exception handling
+// and does not control the native Wasm exception handling.
+//
+// [link]
+var DISABLE_EXCEPTION_THROWING = false;
 
 // Make the exception message printing function, 'getExceptionMessage' available
 // in the JS library for use, by adding necessary symbols to EXPORTED_FUNCTIONS
@@ -708,21 +734,6 @@ var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 // This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
 // [link]
 var EXCEPTION_STACK_TRACES = false;
-
-// Internal: Tracks whether Emscripten should link in exception throwing (C++
-// 'throw') support library. This does not need to be set directly, but pass
-// -fno-exceptions to the build disable exceptions support. (This is basically
-// -fno-exceptions, but checked at final link time instead of individual .cpp
-// file compile time) If the program *does* contain throwing code (some source
-// files were not compiled with `-fno-exceptions`), and this flag is set at link
-// time, then you will get errors on undefined symbols, as the exception
-// throwing code is not linked in. If so you should either unset the option (if
-// you do want exceptions) or fix the compilation of the source files so that
-// indeed no exceptions are used).
-// TODO(sbc): Move to settings_internal (current blocked due to use in test
-// code).
-// [link]
-var DISABLE_EXCEPTION_THROWING = false;
 
 // Emscripten throws an ExitStatus exception to unwind when exit() is called.
 // Without this setting enabled this can show up as a top level unhandled
@@ -1103,6 +1114,7 @@ var LINKABLE = false;
 //   * AUTO_NATIVE_LIBRARIES is disabled.
 //   * AUTO_ARCHIVE_INDEXES is disabled.
 //   * DEFAULT_TO_CXX is disabled.
+//   * USE_GLFW is set to 0 rather than 2 by default.
 //   * ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
 // [compile+link]
 var STRICT = false;
@@ -1294,7 +1306,7 @@ var EMSCRIPTEN_TRACING = false;
 // Specify the GLFW version that is being linked against.  Only relevant, if you
 // are linking against the GLFW library.  Valid options are 2 for GLFW2 and 3
 // for GLFW3.
-// In MINIMAL_RUNTIME builds, this option defaults to 0.
+// This defaults to 0 in either MINIMAL_RUNTIME or STRICT modes.
 // [link]
 var USE_GLFW = 2;
 
@@ -2048,6 +2060,14 @@ var RUNTIME_DEBUG = false;
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE, or via the dependencies of another JS
 // library symbol.
 var LEGACY_RUNTIME = false;
+
+// User-defined functions to wrap with signature conversion, which take or return
+// pointer argument. Only affects MEMORY64=1 builds, see create_pointer_conversion_wrappers
+// in emscripten.py for details.
+// Use _ for non-pointer arguments, p for pointer/i53 arguments, and P for optional pointer/i53 values.
+// Example use -sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p
+// [link]
+var SIGNATURE_CONVERSIONS = [];
 
 //===========================================
 // Internal, used for testing only, from here

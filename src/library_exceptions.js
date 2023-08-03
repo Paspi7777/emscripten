@@ -104,7 +104,6 @@ var LibraryExceptions = {
 
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
-  __cxa_throw__sig: 'vppp',
   __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'],
   __cxa_throw: function(ptr, type, destructor) {
 #if EXCEPTION_DEBUG
@@ -122,7 +121,6 @@ var LibraryExceptions = {
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
   __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast', '$uncaughtExceptionCount'],
-  __cxa_rethrow__sig: 'v',
   __cxa_rethrow: function() {
     var info = exceptionCaught.pop();
     if (!info) {
@@ -144,14 +142,12 @@ var LibraryExceptions = {
     {{{ makeThrow('exceptionLast') }}}
   },
 
-  llvm_eh_typeid_for__sig: 'ip',
   llvm_eh_typeid_for: function(type) {
     return type;
   },
 
   __cxa_begin_catch__deps: ['$exceptionCaught', '__cxa_increment_exception_refcount',
                             '$uncaughtExceptionCount'],
-  __cxa_begin_catch__sig: 'pp',
   __cxa_begin_catch: function(ptr) {
     var info = new ExceptionInfo(ptr);
     if (!info.get_caught()) {
@@ -172,10 +168,9 @@ var LibraryExceptions = {
   // due to calling apply on undefined, that means that the destructor is
   // an invalid index into the FUNCTION_TABLE, so something has gone wrong.
   __cxa_end_catch__deps: ['$exceptionCaught', '$exceptionLast', '__cxa_decrement_exception_refcount', 'setThrew'],
-  __cxa_end_catch__sig: 'v',
   __cxa_end_catch: function() {
     // Clear state flag.
-    _setThrew(0);
+    _setThrew(0, 0);
 #if ASSERTIONS
     assert(exceptionCaught.length > 0);
 #endif
@@ -190,11 +185,10 @@ var LibraryExceptions = {
   },
 
   __cxa_get_exception_ptr__deps: ['$ExceptionInfo'],
-  __cxa_get_exception_ptr__sig: 'pp',
   __cxa_get_exception_ptr: function(ptr) {
     var rtn = new ExceptionInfo(ptr).get_exception_ptr();
 #if EXCEPTION_DEBUG
-    err('__cxa_get_exception_ptr ' + ptrToString(ptr) + ' -> ' + ptrToString(rtn));
+    dbg('__cxa_get_exception_ptr ' + ptrToString(ptr) + ' -> ' + ptrToString(rtn));
 #endif
     return rtn;
   },
@@ -205,15 +199,10 @@ var LibraryExceptions = {
   },
 
   __cxa_call_unexpected: function(exception) {
-    err('Unexpected exception thrown, this is not properly supported - aborting');
-#if !MINIMAL_RUNTIME
-    ABORT = true;
-#endif
-    throw exception;
+    abort('Unexpected exception thrown, this is not properly supported - aborting');
   },
 
   __cxa_current_primary_exception__deps: ['$exceptionCaught', '__cxa_increment_exception_refcount'],
-  __cxa_current_primary_exception__sig: 'p',
   __cxa_current_primary_exception: function() {
     if (!exceptionCaught.length) {
       return 0;
@@ -224,7 +213,6 @@ var LibraryExceptions = {
   },
 
   __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$exceptionCaught', '__cxa_rethrow'],
-  __cxa_rethrow_primary_exception__sig: 'vp',
   __cxa_rethrow_primary_exception: function(ptr) {
     if (!ptr) return;
     var info = new ExceptionInfo(ptr);
@@ -242,12 +230,8 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-  __cxa_find_matching_catch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', 'setTempRet0'],
-  __cxa_find_matching_catch: function() {
-    // Here we use explicit calls to `from64`/`to64` rather then using the
-    // `__sig` attribute to perform these automatically.  This is because the
-    // `__sig` wrapper uses arrow function notation, which is not compatible
-    // with the use of `arguments` in this function.
+  $findMatchingCatch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', 'setTempRet0'],
+  $findMatchingCatch: (args) => {
     var thrown =
 #if EXCEPTION_STACK_TRACES
       exceptionLast && exceptionLast.excPtr;
@@ -257,7 +241,7 @@ var LibraryExceptions = {
     if (!thrown) {
       // just pass through the null ptr
       setTempRet0(0);
-      return {{{ to64(0) }}};
+      return 0;
     }
     var info = new ExceptionInfo(thrown);
     info.set_adjusted_ptr(thrown);
@@ -265,20 +249,19 @@ var LibraryExceptions = {
     if (!thrownType) {
       // just pass through the thrown ptr
       setTempRet0(0);
-      return {{{ to64('thrown') }}};
+      return thrown;
     }
 
     // can_catch receives a **, add indirection
 #if EXCEPTION_DEBUG
-    dbg("__cxa_find_matching_catch on " + ptrToString(thrown));
+    dbg("findMatchingCatch on " + ptrToString(thrown));
 #endif
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
     // return the type of the catch block which should be called.
-    for (var i = 0; i < arguments.length; i++) {
-      var caughtType = arguments[i];
-      {{{ from64('caughtType') }}};
+    for (var arg in args) {
+      var caughtType = args[arg];
 
       if (caughtType === 0 || caughtType === thrownType) {
         // Catch all clause matched or exactly the same type is caught
@@ -287,23 +270,22 @@ var LibraryExceptions = {
       var adjusted_ptr_addr = info.ptr + {{{ C_STRUCTS.__cxa_exception.adjustedPtr }}};
       if (___cxa_can_catch(caughtType, thrownType, adjusted_ptr_addr)) {
 #if EXCEPTION_DEBUG
-        dbg("  __cxa_find_matching_catch found " + [ptrToString(info.get_adjusted_ptr()), caughtType]);
+        dbg("  findMatchingCatch found " + [ptrToString(info.get_adjusted_ptr()), caughtType]);
 #endif
         setTempRet0(caughtType);
-        return {{{ to64('thrown') }}};
+        return thrown;
       }
     }
     setTempRet0(thrownType);
-    return {{{ to64('thrown') }}};
+    return thrown;
   },
 
   __resumeException__deps: ['$exceptionLast'],
-  __resumeException__sig: 'vp',
   __resumeException: function(ptr) {
 #if EXCEPTION_DEBUG
     dbg("__resumeException " + [ptrToString(ptr), exceptionLast]);
 #endif
-    if (!exceptionLast) { 
+    if (!exceptionLast) {
       {{{ storeException('exceptionLast', 'ptr') }}}
     }
     {{{ makeThrow('exceptionLast') }}}
@@ -315,7 +297,7 @@ var LibraryExceptions = {
   $getExceptionMessageCommon: (ptr) => withStackSave(() => {
     var type_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
     var message_addr_addr = stackAlloc({{{ POINTER_SIZE }}});
-    ___get_exception_message({{{ to64('ptr') }}}, {{{ to64('type_addr_addr') }}}, {{{ to64('message_addr_addr') }}});
+    ___get_exception_message(ptr, type_addr_addr, message_addr_addr);
     var type_addr = {{{ makeGetValue('type_addr_addr', 0, '*') }}};
     var message_addr = {{{ makeGetValue('message_addr_addr', 0, '*') }}};
     var type = UTF8ToString(type_addr);
@@ -336,7 +318,7 @@ var LibraryExceptions = {
 #if RELOCATABLE
     return ___cpp_exception; // defined in library.js
 #else
-    return Module['asm']['__cpp_exception'];
+    return wasmExports['__cpp_exception'];
 #endif
   },
 
@@ -418,18 +400,36 @@ var LibraryExceptions = {
 
 #if !WASM_EXCEPTIONS
 // In LLVM, exceptions generate a set of functions of form
-// __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.  where the
+// __cxa_find_matching_catch_2(), __cxa_find_matching_catch_3(), etc.  where the
 // number specifies the number of arguments.  In Emscripten, route all these to
 // a single function '__cxa_find_matching_catch' that variadically processes all
 // of these functions using JS 'arguments' object.
-addCxaCatch = function(n) {
-  LibraryManager.library['__cxa_find_matching_catch_' + n] = '__cxa_find_matching_catch';
+addCxaCatch = (n) => {
+  const args = [];
+  // Confusingly, the actual number of asrgument is n - 2. According to the llvm
+  // code in WebAssemblyLowerEmscriptenEHSjLj.cpp:
+  // This is because a landingpad instruction contains two more arguments, a
+  // personality function and a cleanup bit, and __cxa_find_matching_catch_N
+  // functions are named after the number of arguments in the original landingpad
+  // instruction.
+  let sig = 'p';
+  for (let i = 0; i < n - 2; i++) {
+    args.push(`arg${i}`);
+    sig += 'p';
+  }
+  const argString = args.join(',');
+  LibraryManager.library[`__cxa_find_matching_catch_${n}__sig`] = sig;
+  LibraryManager.library[`__cxa_find_matching_catch_${n}__deps`] = ['$findMatchingCatch'];
+  LibraryManager.library[`__cxa_find_matching_catch_${n}`] = eval(`(${args}) => findMatchingCatch([${argString}])`);
 };
 
-// Add the first 10 catch handlers premptively.  Others get added on demand in
+// Add the first 2-5 catch handlers premptively.  Others get added on demand in
 // jsifier.  This is done here primarily so that these symbols end up with the
 // correct deps in the stub library that we pass to wasm-ld.
-for (let i = 1; i < 10; i++) {
+// Note: __cxa_find_matching_catch_N function uses N = NumClauses + 2 so
+// __cxa_find_matching_catch_2 is the first such function with zero clauses.
+// See WebAssemblyLowerEmscriptenEHSjLj.cpp.
+for (let i = 2; i < 5; i++) {
   addCxaCatch(i)
 }
 #endif
