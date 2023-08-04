@@ -7513,26 +7513,28 @@ void* operator new(size_t size) {
 
     do_test(test2, level=2, prefix='hello_libcxx')
 
-  def test_embind(self):
-    # Verify that both the old `--bind` arg and the new `-lembind` arg work
-    for args in [['-lembind'], ['--bind']]:
-      create_file('test_embind.cpp', r'''
-      #include <stdio.h>
-      #include <emscripten/val.h>
+  @parameterized({
+    '': (['-lembind', '-sDYNAMIC_EXECUTION=0'],),
+    'flag': (['--bind'],),
+  })
+  def test_embind(self, args):
+    create_file('test_embind.cpp', r'''
+    #include <stdio.h>
+    #include <emscripten/val.h>
 
-      using namespace emscripten;
+    using namespace emscripten;
 
-      int main() {
-        val Math = val::global("Math");
+    int main() {
+      val Math = val::global("Math");
 
-        // two ways to call Math.abs
-        printf("abs(-10): %d\n", Math.call<int>("abs", -10));
-        printf("abs(-11): %d\n", Math["abs"](-11).as<int>());
+      // two ways to call Math.abs
+      printf("abs(-10): %d\n", Math.call<int>("abs", -10));
+      printf("abs(-11): %d\n", Math["abs"](-11).as<int>());
 
-        return 0;
-      }
-      ''')
-      self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
+      return 0;
+    }
+    ''')
+    self.do_runf('test_embind.cpp', 'abs(-10): 10\nabs(-11): 11', emcc_args=args)
 
   @parameterized({
     '': ([],),

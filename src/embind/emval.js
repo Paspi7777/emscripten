@@ -408,9 +408,11 @@ var LibraryEmVal = {
 #if !DYNAMIC_EXECUTION
     var argN = new Array(argCount - 1);
     var invokerFunction = (handle, name, destructors, args) => {
+      console.error(args);
       var offset = 0;
       for (var i = 0; i < argCount - 1; ++i) {
         argN[i] = types[i + 1]['readValueFromPointer'](args + offset);
+        console.error(types[i + 1]['readValueFromPointer'])
         offset += types[i + 1]['argPackAdvance'];
       }
       var rv = handle[name].apply(handle, argN);
