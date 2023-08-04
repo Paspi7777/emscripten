@@ -83,7 +83,7 @@ mergeInto(LibraryManager.library, {
   // converts it to a JavaScript Number, which can represent 53 integer bits precisely.
   // TODO: Add $readI53FromI64Signaling() variant.
   $readI53FromI64: (ptr) => {
-    return HEAPU32[ptr>>2] + HEAP32[ptr+4>>2] * 4294967296;
+    return HEAPU32[ptr / 4] + HEAP32[(ptr / 4) + 1] * 4294967296;
   },
 
   // Reads a 64-bit unsigned integer from the WebAssembly heap and

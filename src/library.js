@@ -2869,7 +2869,7 @@ mergeInto(LibraryManager.library, {
     var ch;
     // Most arguments are i32s, so shift the buffer pointer so it is a plain
     // index into HEAP32.
-    buf >>= 2;
+    buf /= 4;
     while (ch = HEAPU8[sigPtr++]) {
 #if ASSERTIONS
       var chr = String.fromCharCode(ch);
@@ -2891,15 +2891,15 @@ mergeInto(LibraryManager.library, {
 #if MEMORY64
       // Special case for pointers under wasm64 which we read as int53 Numbers.
       if (ch == 112/*p*/) {
-        readEmAsmArgsArray.push(readI53FromI64(buf++ << 2));
+        readEmAsmArgsArray.push(readI53FromI64(buf++ * 4));
       } else
 #endif
       readEmAsmArgsArray.push(
         ch == 105/*i*/ ? HEAP32[buf] :
 #if WASM_BIGINT
-       (ch == 106/*j*/ ? HEAP64 : HEAPF64)[buf++ >> 1]
+       (ch == 106/*j*/ ? HEAP64 : HEAPF64)[buf++ / 2]
 #else
-       HEAPF64[buf++ >> 1]
+       HEAPF64[buf++ / 2]
 #endif
       );
       ++buf;
