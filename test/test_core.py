@@ -2378,6 +2378,8 @@ int main(int argc, char **argv) {
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
   def test_aborting_new(self, args):
+    if self.get_setting('INITIAL_MEMORY'):
+      self.skipTest('test depends on default INITIAL_MEMORY')
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
     self.emcc_args += args
@@ -6515,6 +6517,9 @@ int main(void) {
   @no_asan('depends on the specifics of memory size, which for asan we are forced to increase')
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   def test_dlmalloc_inline(self):
+    if self.get_setting('INITIAL_MEMORY'):
+      self.skipTest('test depends on default INITIAL_MEMORY')
+
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', '128mb')
 
@@ -6528,6 +6533,9 @@ int main(void) {
   @no_lsan('depends on the specifics of memory size, which for lsan we are forced to increase')
   @no_wasmfs('wasmfs does some malloc/free during startup, fragmenting the heap, leading to differences later')
   def test_dlmalloc(self):
+    if self.get_setting('INITIAL_MEMORY'):
+      self.skipTest('test depends on default INITIAL_MEMORY')
+
     # needed with typed arrays
     self.set_setting('INITIAL_MEMORY', '128mb')
 
@@ -6560,6 +6568,9 @@ int main(void) {
   @no_asan('the memory size limit here is too small for asan')
   @no_lsan('the memory size limit here is too small for lsan')
   def test_dlmalloc_large(self):
+    if self.get_setting('INITIAL_MEMORY'):
+      self.skipTest('test depends on default INITIAL_MEMORY')
+
     self.emcc_args += ['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH=1', '-sMAXIMUM_MEMORY=128MB']
     self.do_runf(test_file('dlmalloc_test_large.c'), '0 0 0 1')
 
@@ -8394,6 +8405,7 @@ Module.onRuntimeInitialized = () => {
   @no_lsan('undefined symbol __global_base')
   @no_wasm2js('dynamic linking support in wasm2js')
   @with_asyncify_and_jspi
+  @needs_dylink
   def test_asyncify_main_module(self):
     self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_hello_world.c')
