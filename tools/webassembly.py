@@ -237,7 +237,7 @@ class Module:
       opcode = OpCode(self.read_byte())
       args = []
       if opcode in (OpCode.GLOBAL_GET, OpCode.I32_CONST, OpCode.I64_CONST):
-        args.append(self.read_uleb())
+        args.append(self.read_sleb())
       elif opcode in (OpCode.REF_NULL,):
         args.append(self.read_type())
       elif opcode in (OpCode.END, OpCode.I32_ADD, OpCode.I64_ADD):
